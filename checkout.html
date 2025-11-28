@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Checkout</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <!-- LOADING SCREEN -->
+    <div id="globalLoader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Placing Order...</div>
+    </div>
+
+    <div class="header">
+        <span onclick="history.back()" style="font-size:24px; margin-right:15px; cursor:pointer;">&#8592;</span>
+        <span style="font-weight:bold;">Order Summary</span>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3>Shipping Address</h3>
+            <div class="form-group"><input id="adName" placeholder=" "><label>Name</label></div>
+            <div class="form-group"><input id="adPhone" type="number" placeholder=" "><label>Phone</label></div>
+            <div class="form-group"><input id="adAdd" placeholder=" "><label>Address</label></div>
+            <div class="form-group"><input id="adPin" type="number" placeholder=" "><label>Pincode</label></div>
+        </div>
+
+        <button class="btn-primary" onclick="placeOrder()">CONFIRM ORDER</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        function placeOrder() {
+            const name = document.getElementById('adName').value;
+            const phone = document.getElementById('adPhone').value;
+            const addr = document.getElementById('adAdd').value;
+
+            if(!name || !phone || !addr) { alert("Please fill address"); return; }
+
+            // Show Loader
+            document.getElementById('globalLoader').classList.add('active');
+            const uid = auth.currentUser.uid;
+
+            // Get Cart Total
+            let total = 0;
+            db.ref(`carts/${uid}`).once('value', cartSnap => {
+                const items = cartSnap.val();
+                if(!items) return;
+
+                const promises = [];
+                Object.keys(items).forEach(k => {
+                    promises.push(db.ref('products/'+k).once('value').then(p => {
+                        total += p.val().price * items[k];
+                    }));
+                });
+
+                Promise.all(promises).then(() => {
+                    // Create Order
+                    const order = {
+                        userId: uid,
+                        items: items,
+                        address: {name, phone, addr},
+                        amount: total,
+                        status: 'Ordered',
+                        date: Date.now()
+                    };
+
+                    db.ref('orders').push(order).then(() => {
+                        // Clear Cart
+                        db.ref(`carts/${uid}`).remove();
+                        // Hide Loader
+                        document.getElementById('globalLoader').classList.remove('active');
+                        window.location.href = "orders.html";
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+</html>

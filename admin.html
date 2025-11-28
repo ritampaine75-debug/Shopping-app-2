@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="header" style="background:#333;">
+        <div class="header-logo">Admin Panel</div>
+        <div style="font-size:12px; cursor:pointer;" onclick="auth.signOut().then(()=>window.location.href='login.html')">LOGOUT</div>
+    </div>
+
+    <div class="container" style="padding:15px; max-width:800px; margin:0 auto;">
+        
+        <!-- ADD/EDIT FORM -->
+        <div class="card">
+            <h3 style="margin-bottom:15px; color:var(--primary);">Manage Product</h3>
+            <input type="hidden" id="editKey"> <!-- Hidden ID for editing -->
+
+            <div class="form-group">
+                <input id="pName" placeholder=" ">
+                <label>Product Name</label>
+            </div>
+            <div class="form-group">
+                <input id="pPrice" type="number" placeholder=" ">
+                <label>Price (₹)</label>
+            </div>
+            <div class="form-group">
+                <!-- Helper text for multiple photos -->
+                <input id="pImages" placeholder=" ">
+                <label>Image URLs (Comma separated)</label>
+                <small style="color:#888; display:block; margin-top:-15px; margin-bottom:15px; font-size:11px;">E.g. url1.jpg, url2.jpg</small>
+            </div>
+            <div class="form-group">
+                <textarea id="pDesc" rows="3" placeholder=" "></textarea>
+                <label>Description</label>
+            </div>
+
+            <button class="btn-primary" id="saveBtn" onclick="saveProduct()">ADD PRODUCT</button>
+            <button id="cancelBtn" onclick="resetForm()" style="width:100%; margin-top:10px; padding:10px; background:#eee; border:none; display:none;">CANCEL EDIT</button>
+        </div>
+
+        <h3>Inventory</h3>
+        <div id="productList">Loading...</div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // 1. Save or Update
+        function saveProduct() {
+            const key = document.getElementById('editKey').value;
+            const name = document.getElementById('pName').value;
+            const price = Number(document.getElementById('pPrice').value);
+            const desc = document.getElementById('pDesc').value;
+            const rawImgs = document.getElementById('pImages').value;
+            
+            // Convert comma string to array
+            const images = rawImgs.split(',').map(s => s.trim()).filter(s => s !== "");
+
+            if(!name || !price || images.length === 0) {
+                alert("Please fill all fields and at least one image.");
+                return;
+            }
+
+            const data = { name, price, description: desc, images };
+
+            if(key) {
+                // Update
+                db.ref('products/'+key).update(data).then(() => {
+                    alert("Updated!");
+                    resetForm();
+                });
+            } else {
+                // Create New
+                db.ref('products').push(data).then(() => {
+                    alert("Added!");
+                    resetForm();
+                });
+            }
+        }
+
+        // 2. Load List
+        db.ref('products').on('value', snap => {
+            const div = document.getElementById('productList');
+            div.innerHTML = '';
+            snap.forEach(child => {
+                const p = child.val();
+                const k = child.key;
+                const img = p.images ? p.images[0] : '';
+                
+                // Escape strings for onclick
+                const sName = p.name.replace(/'/g, "\\'");
+                const sDesc = p.description ? p.description.replace(/'/g, "\\'") : "";
+                const sImgs = p.images ? p.images.join(', ') : "";
+
+                div.innerHTML += `
+                <div class="card" style="display:flex; gap:10px; align-items:center;">
+                    <img src="${img}" style="width:50px; height:50px; object-fit:contain;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold;">${p.name}</div>
+                        <div style="color:green;">₹${p.price}</div>
+                    </div>
+                    <div>
+                        <button onclick="editMode('${k}','${sName}',${p.price},'${sImgs}','${sDesc}')" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:3px;">Edit</button>
+                        <button onclick="db.ref('products/${k}').remove()" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:3px;">Del</button>
+                    </div>
+                </div>`;
+            });
+        });
+
+        function editMode(k, n, p, i, d) {
+            document.getElementById('editKey').value = k;
+            document.getElementById('pName').value = n;
+            document.getElementById('pPrice').value = p;
+            document.getElementById('pImages').value = i;
+            document.getElementById('pDesc').value = d;
+            document.getElementById('saveBtn').innerText = "UPDATE PRODUCT";
+            document.getElementById('cancelBtn').style.display = "block";
+            window.scrollTo(0,0);
+        }
+
+        function resetForm() {
+            document.getElementById('editKey').value = "";
+            document.getElementById('pName').value = "";
+            document.getElementById('pPrice').value = "";
+            document.getElementById('pImages').value = "";
+            document.getElementById('pDesc').value = "";
+            document.getElementById('saveBtn').innerText = "ADD PRODUCT";
+            document.getElementById('cancelBtn').style.display = "none";
+        }
+    </script>
+</body>
+</html>

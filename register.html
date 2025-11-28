@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body style="background: var(--primary); display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px;">
+
+    <!-- LOADING SCREEN -->
+    <div id="globalLoader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Creating Account...</div>
+    </div>
+
+    <div class="card" style="width:100%; max-width:400px; padding:30px; box-shadow: var(--shadow-lg);">
+        <h2 style="text-align:center; color: var(--text); margin-bottom:10px;">Sign Up</h2>
+        <p style="text-align:center; color: var(--grey); margin-bottom:30px; font-size:14px;">Join us to start shopping</p>
+
+        <div class="form-group">
+            <input type="text" id="regName" placeholder=" ">
+            <label>Full Name</label>
+        </div>
+        <div class="form-group">
+            <input type="email" id="regEmail" placeholder=" ">
+            <label>Email Address</label>
+        </div>
+        <div class="form-group">
+            <input type="password" id="regPass" placeholder=" ">
+            <label>Password</label>
+        </div>
+
+        <button class="btn-primary" onclick="registerUser()">CONTINUE</button>
+
+        <div style="margin-top:20px; text-align:center;">
+            <a href="login.html" style="color:var(--primary); font-weight:600; text-decoration:none;">Existing User? Log In</a>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        function registerUser() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const pass = document.getElementById('regPass').value;
+
+            if(!name || !email || !pass) { alert("Please fill all details"); return; }
+
+            // Show Loader
+            document.getElementById('globalLoader').classList.add('active');
+
+            auth.createUserWithEmailAndPassword(email, pass)
+            .then((cred) => {
+                // Save user data
+                return db.ref('users/' + cred.user.uid).set({
+                    name: name,
+                    email: email,
+                    joinedAt: Date.now()
+                });
+            })
+            .then(() => {
+                window.location.href = "index.html";
+            })
+            .catch((error) => {
+                document.getElementById('globalLoader').classList.remove('active');
+                alert(error.message);
+            });
+        }
+    </script>
+</body>
+</html>
